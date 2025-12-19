@@ -10,9 +10,9 @@ This project is a web-based visualization tool developed to demonstrate the work
 The project was built using **HTML5 Canvas** and **Vanilla JavaScript** to ensure high performance and easy accessibility without requiring backend servers.
 
 ## 📸 Interface Preview
-![Project Screenshot](1.jpg)
-![Project Screenshot](2.jpg)
-![Project Screenshot](3.jpg)
+![Project Screenshot](1.png)
+![Project Screenshot](2.png)
+![Project Screenshot](3.png)
 
 ## 🚀 Features
 * **Interactive Controls:** Select any Origin and Target city dynamically.
