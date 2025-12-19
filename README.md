@@ -41,7 +41,7 @@ Since this project relies on static web technologies, no installation or server 
 3.  Double-click to open it in any modern web browser (Chrome, Edge, Firefox).
 
 **Option 2: Live Demo**
-* [Insert your GitHub Pages Link Here]
+* (https://hamzanadeem9910.github.io/Search-Algorithms-Understanding/)
 
 ## 🧠 Algorithm Analysis
 This tool helps visualize the differences between the algorithms:
