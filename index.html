@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CS-415: Search Algorithm Visualizer</title>
+    <style>
+        /* CUSTOM STYLING - DARK THEME 
+           This style block is distinct from standard templates.
+        */
+        :root {
+            --primary: #4a90e2;
+            --secondary: #50e3c2;
+            --bg-color: #1e1e2f;
+            --panel-color: #27293d;
+            --text-color: #e1e1e6;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin: 0 0 12px 0; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 220px 1fr 260px;
+            gap: 16px;
+            width: 100%;
+            max-width: 1400px;
+            height: calc(100vh - 120px); /* keep dashboard within viewport */
+            box-sizing: border-box;
+            align-items: stretch;
+        }
+
+        .sidebar {
+            background-color: var(--panel-color);
+            padding: 10px 10px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 8px;
+        }
+
+        .main-display {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #444;
+            min-height: 0; /* allow flex items to size correctly */
+        }
+
+        .results {
+            background-color: var(--panel-color);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            min-width: 220px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 8px;
+        }
+
+        /* Compact input group and labels */
+        .input-group { margin-bottom: 8px; }
+        .input-group label { font-size: 0.85em; color: #bdbdbd; margin-bottom:6px; }
+        select { padding: 8px; font-size: 0.95em; }
+
+        /* Compact action buttons */
+        .compact-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .playback-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .small-btn { padding: 6px 8px; font-size: 0.85em; }
+
+        /* tighten slider and label */
+        #animSpeed { width: 100%; height: 28px; }
+        #speedLabel { font-size: 0.85em; color: #bdbdbd; }
+
+        @media (max-width: 720px) {
+            .dashboard { grid-template-columns: 1fr; height: auto; }
+            .sidebar { order: 2; display:block; }
+            .main-display { order: 1; }
+            .results { order: 3; }
+        }
+
+        canvas { background-color: #2c2f40; display: block; width: 100%; height: 100%; }
+
+        /* Smaller, tighter buttons for compact sidebar */
+        .action-btn {
+            width: 100%;
+            padding: 8px;
+            background: linear-gradient(45deg, var(--primary), #0056b3);
+            border: none;
+            font-weight: 600;
+            font-size: 0.9em;
+            cursor: pointer;
+            margin: 6px 0;
+            border-radius: 6px;
+            transition: transform 0.12s;
+        }
+
+        .action-btn:hover { transform: translateY(-1px); opacity: 0.95; }
+
+        @media (max-width: 720px) {
+            .dashboard { grid-template-columns: 1fr; height: auto; }
+            .sidebar { order: 2; }
+            .main-display { order: 1; }
+            .results { order: 3; }
+        }
+
+        /* Input Styling */
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.9em; margin-bottom: 5px; color: #aaa; }
+        
+        select, .action-btn {
+            width: 100%;
+            padding: 10px;
+            background: #1e1e2f;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 6px;
+            margin-bottom: 5px;
+        }
+
+        .action-btn {
+            background: linear-gradient(45deg, var(--primary), #0056b3);
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: transform 0.2s;
+        }
+
+        .action-btn:hover { transform: translateY(-2px); opacity: 0.9; }
+
+        .metrics-box {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #444;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .highlight { color: var(--secondary); font-weight: bold; }
+        .error-msg { color: #ff6b6b; font-size: 0.9em; margin-top: 10px; }
+
+    </style>
+</head>
+<body>
+
+    <h2>Search Algorithms Understanding Developed by Hamza Chohan</h2>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="input-group">
+                <label for="originPoint">Origin City</label>
+                <select id="originPoint"></select>
+            </div>
+
+            <div class="input-group">
+                <label for="destPoint">Target City</label>
+                <select id="destPoint"></select>
+            </div>
+
+            <div class="input-group">
+                <label>Select Algorithm</label>
+                <div class="compact-controls">
+                    <button class="action-btn small-btn" onclick="initiateSearch('BFS')">BFS</button>
+                    <button class="action-btn small-btn" onclick="initiateSearch('DFS')">DFS</button>
+                    <button class="action-btn small-btn" onclick="initiateSearch('UCS')">UCS</button>
+                    <button class="action-btn small-btn" onclick="resetVisuals()" style="background:#555;">Clear</button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Animate</label>
+                <div class="compact-controls">
+                    <button class="action-btn small-btn" onclick="animateSearch('BFS')" style="background:#6b8e23;">BFS</button>
+                    <button class="action-btn small-btn" onclick="animateSearch('DFS')" style="background:#6b8e23;">DFS</button>
+                    <button class="action-btn small-btn" onclick="animateSearch('UCS')" style="background:#6b8e23;">UCS</button>
+                    <button class="action-btn small-btn" onclick="resetVisuals()" style="background:#555;">Clear</button>
+
+                    <div></div>
+                </div>
+            </div>
+
+            
+
+            <div style="margin-top:8px; font-size:0.9em; color:#aaa;">Results will appear on the right panel after running or animating a search.</div>
+        </div>
+
+        <div class="main-display">
+            <canvas id="networkMap" width="800" height="550"></canvas>
+        </div>
+
+        <div class="results">
+            <div class="input-group">
+                <label for="animSpeed">Playback Speed</label>
+                <input id="animSpeed" type="range" min="100" max="1500" step="100" value="500">
+                <div class="playback-controls">
+                    <div style="font-size:0.85em;color:#bdbdbd;">Speed: <span id="speedLabel">500ms</span></div>
+                    <button id="animPlayPause" class="action-btn small-btn" onclick="togglePlayPause()" style="background:#777;">Play</button>
+                    <button class="action-btn small-btn" onclick="stepAnimation()" style="background:#777;">Step</button>
+                </div>
+            </div>
+
+            <h3 style="margin-top:0;">Results</h3>
+            <div class="metric-row">Algorithm: <span id="out-algo" class="highlight">--</span></div>
+            <div class="metric-row">Traversal Cost: <span id="out-cost" class="highlight">0</span></div>
+            <div class="metric-row">Complexity (Steps): <span id="out-steps" class="highlight">0</span></div>
+            <div style="margin-top:10px; font-size: 0.8em; color:#aaa;">Path Sequence:</div>
+            <div id="out-path" class="highlight" style="font-size: 0.9em;">None</div>
+            <div id="status-msg" class="error-msg" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+<script>
+    /**
+     * DATA MODEL
+     * Represents the country map.
+     * Changed variable names from 'nodes/edges' to 'vertices/connections'
+     */
+    const cityNetwork = {
+        vertices: {
+            'A': { posX: 100, posY: 280 },
+            'B': { posX: 220, posY: 120 },
+            'C': { posX: 220, posY: 440 },
+            'D': { posX: 380, posY: 120 },
+            'E': { posX: 380, posY: 280 },
+            'F': { posX: 380, posY: 440 },
+            'G': { posX: 540, posY: 120 },
+            'H': { posX: 540, posY: 440 },
+            'I': { posX: 680, posY: 280 }
+        },
+        // Weights (Costs) representing distance/effort
+        connections: {
+            'A': { 'B': 5, 'C': 3, 'E': 9 },
+            'B': { 'A': 5, 'D': 2, 'E': 4 },
+            'C': { 'A': 3, 'F': 7, 'E': 2 },
+            'D': { 'B': 2, 'G': 6 },
+            'E': { 'A': 9, 'B': 4, 'C': 2, 'G': 3, 'H': 5 },
+            'F': { 'C': 7, 'H': 2 },
+            'G': { 'D': 6, 'E': 3, 'I': 4 },
+            'H': { 'F': 2, 'E': 5, 'I': 6 },
+            'I': { 'G': 4, 'H': 6 }
+        }
+    };
+
+    // Canvas Setup
+    const cvs = document.getElementById('networkMap');
+    const paint = cvs.getContext('2d');
+
+    // Init Controls
+    const originSel = document.getElementById('originPoint');
+    const targetSel = document.getElementById('destPoint');
+    
+    // Fill Dropdowns
+    Object.keys(cityNetwork.vertices).forEach(v => {
+        originSel.add(new Option(`City ${v}`, v));
+        targetSel.add(new Option(`City ${v}`, v));
+    });
+    targetSel.value = 'I'; // Default
+
+    /* =========================================
+       VISUALIZATION ENGINE
+       Draws the map and highlights paths
+       ========================================= */
+    const renderMap = (activeRoute = [], exploredNodes = new Set(), currentNode = null) => {
+        paint.clearRect(0, 0, cvs.width, cvs.height);
+
+        // 1. Draw Connections (Lines)
+        paint.lineWidth = 2;
+        const rendered = new Set();
+
+        for (let src in cityNetwork.connections) {
+            for (let dest in cityNetwork.connections[src]) {
+                let linkID = [src, dest].sort().join('');
+                
+                if (!rendered.has(linkID)) {
+                    rendered.add(linkID);
+                    
+                    const p1 = cityNetwork.vertices[src];
+                    const p2 = cityNetwork.vertices[dest];
+                    
+                    // Check if this segment is in the active solution
+                    let isActive = false;
+                    for (let k = 0; k < activeRoute.length - 1; k++) {
+                        if ((activeRoute[k] === src && activeRoute[k+1] === dest) ||
+                            (activeRoute[k] === dest && activeRoute[k+1] === src)) {
+                            isActive = true;
+                        }
+                    }
+
+                    const isExploredEdge = exploredNodes && exploredNodes.has(src) && exploredNodes.has(dest);
+
+                    paint.beginPath();
+                    paint.moveTo(p1.posX, p1.posY);
+                    paint.lineTo(p2.posX, p2.posY);
+                    paint.strokeStyle = isActive ? '#50e3c2' : (isExploredEdge ? '#f5a623' : '#555'); // Teal if active, orange if explored
+                    paint.lineWidth = isActive ? 4 : (isExploredEdge ? 2 : 1);
+                    paint.stroke();
+
+                    // Cost Label
+                    paint.fillStyle = '#aaa';
+                    paint.font = '12px Arial';
+                    paint.fillText(cityNetwork.connections[src][dest], (p1.posX + p2.posX)/2, (p1.posY + p2.posY)/2 - 5);
+                }
+            }
+        }
+
+        // 2. Draw Vertices (Circles)
+        for (let id in cityNetwork.vertices) {
+            const loc = cityNetwork.vertices[id];
+            
+            paint.beginPath();
+            paint.arc(loc.posX, loc.posY, 20, 0, 2 * Math.PI);
+            
+            // Visual priority: active path -> explored -> default
+            if (activeRoute.includes(id)) {
+                paint.fillStyle = '#50e3c2'; // Active Color
+                paint.strokeStyle = '#fff';
+            } else if (exploredNodes && exploredNodes.has(id)) {
+                paint.fillStyle = '#f5a623'; // Explored color
+                paint.strokeStyle = '#fff';
+            } else {
+                paint.fillStyle = '#4a90e2'; // Default Blue
+                paint.strokeStyle = '#1e1e2f';
+            }
+
+            paint.lineWidth = (id === currentNode) ? 4 : 1;
+            paint.fill();
+            paint.stroke();
+
+            // Text Label
+            paint.fillStyle = '#1e1e2f';
+            paint.font = 'bold 14px Arial';
+            paint.textAlign = 'center';
+            paint.textBaseline = 'middle';
+            paint.fillText(id, loc.posX, loc.posY);
+        }
+    };
+
+    /* =========================================
+       SEARCH ALGORITHMS
+       Refactored to Arrow Functions
+       ========================================= */
+
+    // Utility: Backtrack from destination to start using parent pointers
+    const buildPath = (predecessors, target) => {
+        let route = [target];
+        let curr = target;
+        while (predecessors[curr]) {
+            curr = predecessors[curr];
+            route.unshift(curr);
+        }
+        return route;
+    };
+
+    // --- BFS Implementation ---
+    const executeBreadthFirst = (start, end) => {
+        let frontier = [start];
+        let explored = new Set([start]);
+        let exploredOrder = [start];
+        let lineage = {}; 
+        let operations = 0;
+
+        while (frontier.length > 0) {
+            let current = frontier.shift(); // Dequeue
+            operations++;
+
+            if (current === end) {
+                return { path: buildPath(lineage, end), ops: operations, exploredOrder };
+            }
+
+            for (let neighbor in cityNetwork.connections[current]) {
+                if (!explored.has(neighbor)) {
+                    explored.add(neighbor);
+                    exploredOrder.push(neighbor);
+                    lineage[neighbor] = current;
+                    frontier.push(neighbor);
+                }
+            }
+        }
+        return null;
+    };
+
+    // --- DFS Implementation ---
+    const executeDepthFirst = (start, end) => {
+        let stack = [start];
+        let explored = new Set();
+        let exploredOrder = [];
+        let lineage = {};
+        let operations = 0;
+
+        while (stack.length > 0) {
+            let current = stack.pop(); // Pop from stack
+            
+            if (!explored.has(current)) {
+                explored.add(current);
+                exploredOrder.push(current);
+                operations++;
+
+                if (current === end) {
+                    return { path: buildPath(lineage, end), ops: operations, exploredOrder };
+                }
+
+                // Push neighbors
+                for (let neighbor in cityNetwork.connections[current]) {
+                    if (!explored.has(neighbor)) {
+                        lineage[neighbor] = current;
+                        stack.push(neighbor);
+                    }
+                }
+            }
+        }
+        return null;
+    };
+
+    // --- UCS Implementation ---
+    const executeUniformCost = (start, end) => {
+        // Queue Item: { id, accumulatedCost, parent }
+        let queue = [{ id: start, accCost: 0, parent: null }];
+        let explored = new Set();
+        let exploredOrder = [];
+        let lineage = {};
+        let bestCosts = {}; // Tracks min cost to reach a node
+        let operations = 0;
+
+        bestCosts[start] = 0;
+
+        while (queue.length > 0) {
+            // Sort by cost (Simulating Priority Queue)
+            queue.sort((a, b) => a.accCost - b.accCost);
+            let currentObj = queue.shift();
+            let current = currentObj.id;
+
+            if (explored.has(current)) continue;
+            explored.add(current);
+            exploredOrder.push(current);
+            operations++;
+            
+            if (currentObj.parent) lineage[current] = currentObj.parent;
+
+            if (current === end) {
+                return { 
+                    path: buildPath(lineage, end), 
+                    ops: operations,
+                    finalCost: currentObj.accCost,
+                    exploredOrder
+                };
+            }
+
+            for (let neighbor in cityNetwork.connections[current]) {
+                let tripCost = cityNetwork.connections[current][neighbor];
+                let newTotal = currentObj.accCost + tripCost;
+                
+                if (!explored.has(neighbor)) {
+                    if (bestCosts[neighbor] === undefined || newTotal < bestCosts[neighbor]) {
+                        bestCosts[neighbor] = newTotal;
+                        queue.push({ id: neighbor, accCost: newTotal, parent: current });
+                    }
+                }
+            }
+        }
+        return null;
+    };
+
+    /* =========================================
+       CONTROLLER
+       ========================================= */
+    const initiateSearch = (algoType) => {
+        const s = originSel.value;
+        const e = targetSel.value;
+        const msgBox = document.getElementById('status-msg');
+        
+        // Clear previous messages
+        msgBox.innerText = "";
+        
+        if (s === e) {
+            msgBox.innerText = "Origin and Destination are identical.";
+            return;
+        }
+
+        let outcome = null;
+
+        // Route to correct algo
+        if (algoType === 'BFS') outcome = executeBreadthFirst(s, e);
+        if (algoType === 'DFS') outcome = executeDepthFirst(s, e);
+        if (algoType === 'UCS') outcome = executeUniformCost(s, e);
+
+        if (outcome) {
+            // Calculate cost manually if not provided by UCS
+            let totalDist = outcome.finalCost;
+            if (totalDist === undefined) {
+                totalDist = 0;
+                for (let i = 0; i < outcome.path.length - 1; i++) {
+                    let u = outcome.path[i];
+                    let v = outcome.path[i+1];
+                    totalDist += cityNetwork.connections[u][v];
+                }
+            }
+
+            // Update DOM
+            document.getElementById('out-algo').innerText = algoType;
+            document.getElementById('out-path').innerText = outcome.path.join(' ➝ ');
+            document.getElementById('out-cost').innerText = totalDist;
+            document.getElementById('out-steps').innerText = outcome.ops;
+
+            renderMap(outcome.path, new Set(outcome.path));
+        } else {
+            msgBox.innerText = "Path unreachable.";
+            renderMap();
+        }
+    };
+
+    // --- Animation Controller ---
+    let animationHandle = null;
+    let animationState = {
+        playing: false,
+        phase: 'explore',
+        idx: 0,
+        exploredOrder: [],
+        path: [],
+        pathIdx: 0
+    };
+
+    const animateSearch = (algoType) => {
+        const s = originSel.value;
+        const e = targetSel.value;
+        const msgBox = document.getElementById('status-msg');
+        msgBox.innerText = "";
+
+        if (s === e) {
+            msgBox.innerText = "Origin and Destination are identical.";
+            return;
+        }
+
+        let outcome = null;
+        if (algoType === 'BFS') outcome = executeBreadthFirst(s, e);
+        if (algoType === 'DFS') outcome = executeDepthFirst(s, e);
+        if (algoType === 'UCS') outcome = executeUniformCost(s, e);
+
+        if (outcome) {
+            animationState.phase = 'explore';
+            animationState.idx = 0;
+            animationState.path = outcome.path || [];
+            animationState.pathIdx = 0;
+            animationState.exploredOrder = outcome.exploredOrder || [];
+            animationState.playing = true;
+            document.getElementById('out-algo').innerText = algoType;
+            document.getElementById('out-steps').innerText = outcome.ops;
+            // Set cost (UCS provides finalCost; others compute)
+            let totalCost = outcome.finalCost;
+            if (totalCost === undefined) {
+                totalCost = 0;
+                for (let i = 0; i < animationState.path.length - 1; i++) {
+                    let u = animationState.path[i];
+                    let v = animationState.path[i+1];
+                    totalCost += cityNetwork.connections[u][v];
+                }
+            }
+            document.getElementById('out-cost').innerText = totalCost;
+            startAnimation();
+        } else {
+            msgBox.innerText = "Path unreachable.";
+            renderMap();
+        }
+    };
+
+    const startAnimation = () => {
+        const speed = Number(document.getElementById('animSpeed').value);
+        if (animationHandle) clearInterval(animationHandle);
+        animationHandle = setInterval(animationStep, speed);
+        animationState.playing = true;
+        document.getElementById('animPlayPause').innerText = 'Pause';
+    };
+
+    const animationStep = () => {
+        if (animationState.phase === 'explore') {
+            if (animationState.idx < animationState.exploredOrder.length) {
+                const exploredSet = new Set(animationState.exploredOrder.slice(0, animationState.idx + 1));
+                const current = animationState.exploredOrder[animationState.idx];
+                renderMap([], exploredSet, current);
+                animationState.idx++;
+            } else {
+                // move to path phase
+                animationState.phase = 'path';
+                animationState.pathIdx = 0;
+            }
+        } else if (animationState.phase === 'path') {
+            if (animationState.pathIdx <= animationState.path.length) {
+                const activeRoute = animationState.path.slice(0, animationState.pathIdx);
+                renderMap(activeRoute, new Set(animationState.path), animationState.path[animationState.pathIdx-1] || null);
+                animationState.pathIdx++;
+            } else {
+                // finished
+                clearInterval(animationHandle);
+                animationHandle = null;
+                animationState.playing = false;
+                document.getElementById('animPlayPause').innerText = 'Play';
+                // show full path
+                renderMap(animationState.path, new Set(animationState.path));
+                // update DOM out-path
+                document.getElementById('out-path').innerText = animationState.path.join(' ➝ ');
+            }
+        }
+    };
+
+    const togglePlayPause = () => {
+        if (animationState.playing) {
+            clearInterval(animationHandle);
+            animationHandle = null;
+            animationState.playing = false;
+            document.getElementById('animPlayPause').innerText = 'Play';
+        } else {
+            startAnimation();
+        }
+    };
+
+    const stepAnimation = () => {
+        if (animationHandle) {
+            // if playing, pause and step manually
+            togglePlayPause();
+        }
+        animationStep();
+    };
+
+    document.getElementById('animSpeed').addEventListener('input', (e) => {
+        document.getElementById('speedLabel').innerText = e.target.value + 'ms';
+        if (animationState.playing) {
+            startAnimation(); // restart with new speed
+        }
+    });
+
+    const resetVisuals = () => {
+        renderMap();
+        document.getElementById('out-algo').innerText = "--";
+        document.getElementById('out-path').innerText = "None";
+        document.getElementById('out-cost').innerText = "0";
+        document.getElementById('out-steps').innerText = "0";
+        document.getElementById('status-msg').innerText = "";
+    };
+
+    // Responsive canvas sizing
+    function resizeCanvas() {
+        const rect = cvs.getBoundingClientRect();
+        cvs.width = Math.max(300, Math.floor(rect.width));
+        cvs.height = Math.max(200, Math.floor(rect.height));
+        // preserve current animation/path when resizing
+        if (animationState.phase === 'path') {
+            renderMap(animationState.path.slice(0, animationState.pathIdx), new Set(animationState.path), animationState.path[animationState.pathIdx-1] || null);
+        } else if (animationState.phase === 'explore') {
+            const exploredSet = new Set(animationState.exploredOrder.slice(0, animationState.idx));
+            const current = animationState.exploredOrder[animationState.idx-1] || null;
+            renderMap([], exploredSet, current);
+        } else {
+            renderMap(animationState.path || []);
+        }
+    }
+
+    let resizeTimer = null;
+    function debounceResize() {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            resizeCanvas();
+            resizeTimer = null;
+        }, 120);
+    }
+
+    window.addEventListener('resize', debounceResize);
+
+    // initialize sizes then render
+    resizeCanvas();
+
+</script>
+</body>
+</html>
